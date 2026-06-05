@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      (function (s, e, n, d, er) {
+        s['Sender'] = er;
+        s[er] = s[er] || function () {
+          (s[er].q = s[er].q || []).push(arguments)
+        }, s[er].l = 1 * new Date();
+        s[er].on = function(event, callback) {
+          s[er].listeners = s[er].listeners || {};
+          (s[er].listeners[event] = s[er].listeners[event] || []).push(callback);
+        };
+        var a = e.createElement(n),
+            m = e.getElementsByTagName(n)[0];
+        a.async = 1;
+        a.src = d;
+        m.parentNode.insertBefore(a, m)
+      })(window, document, 'script', 'https://cdn.sender.net/accounts_resources/universal.js', 'sender');
+      sender('c3b4ead45e4118')
+    </script>
+  </body>
+</html>
+

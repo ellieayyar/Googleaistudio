@@ -1,0 +1,6 @@
+{
+  "name": "Settlefy",
+  "description": "A personalized 90-day settlement guide for newcomers to Canada. Clear timelines, checklists, and step-by-step instructions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
