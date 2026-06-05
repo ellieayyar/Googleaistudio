@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import SenderForm from './SenderForm';
 import { 
   ClipboardCheck, 
   Map, 
@@ -19,42 +20,6 @@ interface HomeViewProps {
 
 export default function HomeView({ onNavigate, onSelectTier }: HomeViewProps) {
   
-  useEffect(() => {
-    // Dynamically load the Sender.net universal script on component mount
-    const win = window as any;
-    win.Sender = 'sender';
-    win.sender = win.sender || function () {
-      (win.sender.q = win.sender.q || []).push(arguments);
-    };
-    win.sender.l = 1 * (new Date() as any);
-    win.sender.on = function(event: string, callback: any) {
-      win.sender.listeners = win.sender.listeners || {};
-      (win.sender.listeners[event] = win.sender.listeners[event] || []).push(callback);
-    };
-
-    // Force re-load the universal script to scan the freshly rendered component's DOM
-    const existingScript = document.getElementById('sender-universal-script');
-    if (existingScript) {
-      existingScript.remove();
-    }
-
-    const script = document.createElement('script');
-    script.id = 'sender-universal-script';
-    script.async = true;
-    script.src = 'https://cdn.sender.net/accounts_resources/universal.js';
-    document.body.appendChild(script);
-
-    win.sender('c3b4ead45e4118');
-
-    return () => {
-      // Clean up script on unmount
-      const scriptToRemove = document.getElementById('sender-universal-script');
-      if (scriptToRemove) {
-        scriptToRemove.remove();
-      }
-    };
-  }, []);
-
   const handleStartOnboarding = (tier: 'free' | 'confident' | 'whiteglove') => {
     onSelectTier(tier);
     onNavigate('#/get-started');
@@ -262,7 +227,7 @@ export default function HomeView({ onNavigate, onSelectTier }: HomeViewProps) {
             Subscribe to our newsletter for weekly guides on housing, job searching, tax filing, and administrative essentials for newcomers.
           </p>
           <div className="bg-[#FAF7F2] p-6 sm:p-8 rounded-2xl border border-gray-100 max-w-lg mx-auto shadow-sm">
-            <div style={{ textAlign: 'left' }} className="sender-form-field" data-sender-form-id="dG6Jpr"></div>
+            <SenderForm />
           </div>
         </div>
       </section>
