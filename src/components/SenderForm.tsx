@@ -4,7 +4,7 @@ interface SenderFormProps {
   formId?: string;
 }
 
-export default function SenderForm({ formId = 'dG6Jpr' }: SenderFormProps) {
+export default function SenderForm({ formId = 'dPNoZ1' }: SenderFormProps) {
   const renderedRef = useRef<boolean>(false);
 
   useEffect(() => {

@@ -31,33 +31,32 @@ export default function HomeView({ onNavigate, onSelectTier }: HomeViewProps) {
       <section className="relative overflow-hidden py-16 sm:py-24 bg-[#FAF7F2]">
         <div className="absolute inset-0 bg-[radial-gradient(#028090_1px,transparent_1px)] [background-size:16px_16px] opacity-10"></div>
         <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider text-[#028090] bg-[#028090]/10 mb-6 uppercase">
-            <Sparkles className="w-3 pb-0.5" /> Your Newcomer Companion
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wider text-[#028090] bg-[#028090]/10 mb-6 uppercase">
+            <Sparkles className="w-3.5 h-3.5 text-[#028090]" /> Free Download · No Credit Card
           </span>
           <h1 className="font-sans text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#2D3748] mb-6 leading-[1.12]">
-            Your first 90 days in Canada, <span className="text-[#028090]">simplified</span>.
+            Your First 30 Days in Canada. <span className="text-[#028090]">Sorted.</span>
           </h1>
-          <p className="text-lg sm:text-xl text-[#2D3748]/80 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Answer 6 simple questions. Get a personalized settlement plan. Know exactly what to do, when, and in what order, tailored precisely to your province and situation.
+          <p className="text-lg sm:text-xl text-[#2D3748]/80 leading-relaxed max-w-2xl mx-auto mb-10">
+            A step-by-step checklist of every admin task, document, and deadline — organized by week so nothing falls through the cracks.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              id="cta-hero-start"
-              onClick={() => handleStartOnboarding('confident')}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl text-white font-medium bg-[#028090] hover:bg-[#028090]/90 transition duration-150 shadow-md flex items-center justify-center gap-2 cursor-pointer text-base"
-            >
-              Get your personalized plan <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              id="cta-hero-pricing"
-              onClick={() => onNavigate('#/pricing')}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl text-[#2D3748] font-medium bg-white hover:bg-white/80 border border-gray-200 transition duration-150 flex items-center justify-center gap-2 cursor-pointer text-base"
-            >
-              View Pricing Tiers
-            </button>
+
+          {/* Centered Form Container */}
+          <div className="w-full max-w-lg mx-auto mb-14 text-left">
+            <div className="bg-white p-6 sm:p-8 rounded-2xl border border-gray-150 shadow-sm">
+              <h3 className="text-lg font-semibold text-[#2D3748] mb-4 text-center sm:text-left">
+                Send the free checklist to my inbox
+              </h3>
+              
+              <SenderForm formId="dPNoZ1" />
+              
+              <p className="text-xs text-gray-400 mt-4 text-center">
+                No spam, ever. Unsubscribe in one click.
+              </p>
+            </div>
           </div>
-          
-          <div className="mt-14 p-1 rounded-2xl bg-gradient-to-tr from-[#028090]/20 to-[#C4972F]/20 max-w-3xl mx-auto border border-white/40 shadow-xl overflow-hidden">
+
+          <div className="mt-16 p-1 rounded-2xl bg-gradient-to-tr from-[#028090]/10 to-[#C4972F]/10 max-w-3xl mx-auto border border-white/40 shadow-md overflow-hidden">
             <div className="bg-white rounded-[14px] p-6 text-left flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div>
                 <p className="text-xs font-semibold uppercase text-[#028090] tracking-wider mb-1">Interactive roadmap sample</p>
@@ -214,20 +213,64 @@ export default function HomeView({ onNavigate, onSelectTier }: HomeViewProps) {
         </div>
       </section>
 
-      {/* Newsletter Signup Section */}
-      <section className="py-16 bg-white border-t border-gray-100">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wider text-[#028090] bg-[#028090]/10 mb-4 uppercase">
-            Stay Updated
-          </span>
-          <h2 className="text-3xl font-bold tracking-tight text-[#2D3748] mb-3">
-            Get Canadian Settling Tips
-          </h2>
-          <p className="text-gray-500 max-w-xl mx-auto mb-8 text-base">
-            Subscribe to our newsletter for weekly guides on housing, job searching, tax filing, and administrative essentials for newcomers.
-          </p>
-          <div className="bg-[#FAF7F2] p-6 sm:p-8 rounded-2xl border border-gray-100 max-w-lg mx-auto shadow-sm">
-            <SenderForm />
+      {/* Newsletter / Lead Magnet Signup Section */}
+      <section className="py-20 bg-white border-t border-b border-gray-100">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* Lead Magnet Details (Left Side) */}
+            <div className="lg:col-span-7 space-y-6">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold tracking-wider text-[#028090] bg-[#028090]/10 uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-[#028090]" /> Free Settlement Resource
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#2D3748]">
+                Get Your Free 90-Day Canadian Newcomer Checklist
+              </h2>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                Unlock our comprehensive, interactive checklist covering housing, banking, job search secrets, tax setup, and provincial registry timelines. Ready to print or use digitally.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {[
+                  { title: "45 Actionable Steps", desc: "Divided week-by-week" },
+                  { title: "Direct Registry Links", desc: "No more searching for hours" },
+                  { title: "Newcomer Tax Advice", desc: "Save on your first filing" },
+                  { title: "Printable PDF Format", desc: "Offline reference anywhere" }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-[#028090] shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-sm text-[#2D3748]">{item.title}</h4>
+                      <p className="text-xs text-gray-400">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA Container (Right Side) */}
+            <div className="lg:col-span-5">
+              <div className="bg-[#FAF7F2] p-8 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden text-center space-y-6">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#028090]/5 rounded-bl-full pointer-events-none"></div>
+                <div className="w-12 h-12 rounded-full bg-[#028090]/10 text-[#028090] flex items-center justify-center mx-auto">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-[#2D3748]">Download Free Checklist</h3>
+                <p className="text-sm text-gray-500">Get the full checklist delivered instantly to your email address.</p>
+                
+                <button
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="w-full py-4 px-6 rounded-xl font-bold bg-[#028090] hover:bg-[#028090]/90 text-white shadow-md transition duration-150 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Get Your Copy For Free <ArrowRight className="w-4 h-4" />
+                </button>
+                
+                <p className="text-[11px] text-gray-400">
+                  Secure instant access above inside our layout.
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
