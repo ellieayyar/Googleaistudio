@@ -28,6 +28,7 @@ import DashboardView from './components/DashboardView';
 import TaskDetailView from './components/TaskDetailView';
 import PricingView from './components/PricingView';
 import AboutView from './components/AboutView';
+import FoundingMemberView from './components/FoundingMemberView';
 
 export default function App() {
   const [route, setRoute] = useState<string>('home');
@@ -85,6 +86,9 @@ export default function App() {
         setSelectedTaskId(null);
       } else if (hash === '#/about') {
         setRoute('about');
+        setSelectedTaskId(null);
+      } else if (hash === '#/founding-member') {
+        setRoute('founding-member');
         setSelectedTaskId(null);
       } else {
         setRoute('home');
@@ -247,6 +251,12 @@ export default function App() {
             >
               About
             </button>
+            <button 
+              onClick={() => navigateTo('#/founding-member')} 
+              className={`text-sm font-bold tracking-tight px-3 py-1.5 rounded-lg transition-all cursor-pointer ${route === 'founding-member' ? 'text-white bg-[#C4972F]' : 'text-[#C4972F] bg-[#C4972F]/10 hover:bg-[#C4972F]/20'}`}
+            >
+              Become a Founding Member
+            </button>
           </nav>
 
           {/* User Profile Badge Side */}
@@ -314,6 +324,12 @@ export default function App() {
             className="text-left py-2 font-bold text-[#2D3748]"
           >
             About
+          </button>
+          <button 
+            onClick={() => navigateTo('#/founding-member')} 
+            className="text-left py-2 font-bold text-[#C4972F] flex items-center gap-1.5"
+          >
+            <Sparkles className="w-4 h-4 text-[#C4972F]" /> Become a Founding Member
           </button>
           <div className="border-t border-gray-100 pt-4 flex flex-col gap-3">
             {profile ? (
@@ -387,6 +403,10 @@ export default function App() {
 
           {route === 'about' && (
             <AboutView />
+          )}
+
+          {route === 'founding-member' && (
+            <FoundingMemberView />
           )}
         </div>
       </main>
