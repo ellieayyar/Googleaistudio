@@ -7,12 +7,14 @@ export type BiggestConcern = 'Documentation' | 'Healthcare' | 'Housing' | 'Emplo
 
 export interface OnboardingAnswers {
   name: string;
-  status: ImmigrationStatus;
+  email: string;
+  arrivalDate: string; // Exact arrival date, e.g. YYYY-MM-DD for deadline calculations
+  status: ImmigrationStatus; // This maps directly to "visa type"
   province: Province;
-  family: FamilySituation;
-  employment: EmploymentStatus;
-  arrival: ArrivalTimeline;
-  concern: BiggestConcern;
+  family?: FamilySituation;
+  employment?: EmploymentStatus;
+  arrival?: ArrivalTimeline;
+  concern?: BiggestConcern;
   hasPaid: boolean; // false = Free Essentials, true = Confident Start / White Glove
   tier: 'free' | 'confident' | 'whiteglove';
 }

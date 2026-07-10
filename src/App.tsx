@@ -106,6 +106,19 @@ export default function App() {
     window.location.hash = hash;
   };
 
+  // Sync state helper to simulated account database
+  const syncToUserDatabase = (currentProfile: OnboardingAnswers | null, currentTasks: Task[]) => {
+    if (!currentProfile || !currentProfile.email) return;
+    const dbSaved = localStorage.getItem('settlefy_accounts_db');
+    const db = dbSaved ? JSON.parse(dbSaved) : {};
+    db[currentProfile.email] = {
+      name: currentProfile.name,
+      profile: currentProfile,
+      tasks: currentTasks
+    };
+    localStorage.setItem('settlefy_accounts_db', JSON.stringify(db));
+  };
+
   // Onboarding Submit Completion handler
   const handleOnboardingComplete = (answers: OnboardingAnswers) => {
     const generated = generatePersonalizedTasks(answers);
@@ -115,6 +128,7 @@ export default function App() {
 
     localStorage.setItem('settlefy_user_profile', JSON.stringify(answers));
     localStorage.setItem('settlefy_tasks', JSON.stringify(generated));
+    syncToUserDatabase(answers, generated);
 
     navigateTo('#/dashboard');
   };
@@ -132,6 +146,7 @@ export default function App() {
     });
     setTasks(updated);
     localStorage.setItem('settlefy_tasks', JSON.stringify(updated));
+    syncToUserDatabase(profile, updated);
   };
 
   // Toggle document sub-checklist checkboxes inside a task page
@@ -152,6 +167,7 @@ export default function App() {
     });
     setTasks(updated);
     localStorage.setItem('settlefy_tasks', JSON.stringify(updated));
+    syncToUserDatabase(profile, updated);
   };
 
   // Try Out Settlefy Demo in One-Click!
@@ -159,6 +175,8 @@ export default function App() {
     setShowDemoNotification(false);
     const demoAnswers: OnboardingAnswers = {
       name: 'Maria Moreno',
+      email: 'settlefy2026@gmail.com',
+      arrivalDate: new Date().toISOString().split('T')[0],
       status: 'PR holder',
       province: 'Ontario',
       family: 'With partner',
@@ -188,13 +206,15 @@ export default function App() {
 
     localStorage.setItem('settlefy_user_profile', JSON.stringify(upgradedProfile));
     localStorage.setItem('settlefy_tasks', JSON.stringify(updatedTasks));
+    syncToUserDatabase(upgradedProfile, updatedTasks);
   };
 
-  // Absolute Reset of Profile
+  // Absolute Reset of Profile / Log Out
   const handleResetWorkspace = () => {
-    if (window.confirm('Do you want to clear your settlement profile and start fresh?')) {
+    if (window.confirm('Do you want to sign out and clear Settlefy cache? Your account data will remain saved.')) {
       localStorage.removeItem('settlefy_user_profile');
       localStorage.removeItem('settlefy_tasks');
+      localStorage.removeItem('settlefy_auth_user');
       setProfile(null);
       setTasks([]);
       navigateTo('#/');

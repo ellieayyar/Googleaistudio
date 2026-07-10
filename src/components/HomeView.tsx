@@ -83,8 +83,8 @@ export default function HomeView({ onNavigate, onSelectTier }: HomeViewProps) {
             {[
               {
                 step: '1',
-                title: 'Answer 6 quick questions',
-                desc: 'Select your province, visa category, immediate worries, and family status in under 2 minutes.',
+                title: 'Answer exactly 3 questions',
+                desc: 'Select your visa type, province, and arrival date in under 2 minutes.',
                 icon: ClipboardCheck,
                 color: 'bg-emerald-50 text-emerald-600'
               },

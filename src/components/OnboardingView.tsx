@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Building2, 
-  MapPin, 
-  Users, 
-  Briefcase, 
+  Sparkles, 
+  ArrowRight, 
+  ArrowLeft, 
   Calendar, 
-  AlertTriangle,
-  ArrowRight,
-  ArrowLeft,
-  ChevronRight,
-  Sparkles,
+  MapPin, 
+  Award, 
+  Check, 
+  Mail, 
+  Lock, 
+  User, 
+  AlertTriangle, 
+  RefreshCw,
   Info
 } from 'lucide-react';
-import { OnboardingAnswers, ImmigrationStatus, Province, FamilySituation, EmploymentStatus, ArrivalTimeline, BiggestConcern } from '../types';
+import { OnboardingAnswers, ImmigrationStatus, Province } from '../types';
 
 interface OnboardingViewProps {
   onComplete: (answers: OnboardingAnswers) => void;
@@ -20,182 +22,489 @@ interface OnboardingViewProps {
 }
 
 export default function OnboardingView({ onComplete, selectedTier }: OnboardingViewProps) {
-  // We have a preliminary "Step 0" for Name, followed by the 6 core questions, making it perfectly cohesive
-  const [step, setStep] = useState<number>(0);
-  const [name, setName] = useState<string>('');
-  const [status, setStatus] = useState<ImmigrationStatus>('PR holder');
+  // Wizard Steps:
+  // -1: Login / Sign Up Screen
+  //  0: Prompt to Resume (if partial answers exist)
+  //  1: Visa Type
+  //  2: Settling Province
+  //  3: Arrival Date
+  const [step, setStep] = useState<number>(-1);
+  
+  // Auth states
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
+  const [isEmailLogin, setIsEmailLogin] = useState<boolean>(false);
+  const [authName, setAuthName] = useState<string>('');
+  const [authEmail, setAuthEmail] = useState<string>('');
+  const [authPassword, setAuthPassword] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
+
+  // Logged-in session state
+  const [userSession, setUserSession] = useState<{ email: string; name: string } | null>(() => {
+    const saved = localStorage.getItem('settlefy_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // Onboarding answers states
+  const [visaType, setVisaType] = useState<ImmigrationStatus>('PR holder');
   const [province, setProvince] = useState<Province>('Ontario');
-  const [family, setFamily] = useState<FamilySituation>('Single');
-  const [employment, setEmployment] = useState<EmploymentStatus>('Looking for work');
-  const [arrival, setArrival] = useState<ArrivalTimeline>('Within 1 month');
-  const [concern, setConcern] = useState<BiggestConcern>('Documentation');
+  const [arrivalDate, setArrivalDate] = useState<string>(() => {
+    // Default to today
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+
+  // Error simulation states
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [loadingText, setLoadingText] = useState<string>('Processing your choices...');
+  const [loadingText, setLoadingText] = useState<string>('');
+  const [generationAttempt, setGenerationAttempt] = useState<number>(0);
+  const [generationError, setGenerationError] = useState<string>('');
+
+  // Load resume/midway state on mount or login
+  useEffect(() => {
+    if (userSession) {
+      // If logged in, look for existing incomplete session
+      const savedMidway = localStorage.getItem(`settlefy_midway_${userSession.email}`);
+      if (savedMidway && step === -1) {
+        setStep(0); // Go to resume prompt
+      } else if (step === -1) {
+        setStep(1); // Go to first question
+      }
+    }
+  }, [userSession]);
+
+  // Save intermediate answers to localStorage whenever they change
+  useEffect(() => {
+    if (userSession && step > 0) {
+      const midwayData = {
+        visaType,
+        province,
+        arrivalDate,
+        step
+      };
+      localStorage.setItem(`settlefy_midway_${userSession.email}`, JSON.stringify(midwayData));
+    }
+  }, [visaType, province, arrivalDate, step, userSession]);
+
+  const handleResume = () => {
+    if (!userSession) return;
+    const savedMidway = localStorage.getItem(`settlefy_midway_${userSession.email}`);
+    if (savedMidway) {
+      try {
+        const parsed = JSON.parse(savedMidway);
+        setVisaType(parsed.visaType || 'PR holder');
+        setProvince(parsed.province || 'Ontario');
+        setArrivalDate(parsed.arrivalDate || new Date().toISOString().split('T')[0]);
+        setStep(parsed.step || 1);
+      } catch (err) {
+        setStep(1);
+      }
+    } else {
+      setStep(1);
+    }
+  };
+
+  const handleStartFresh = () => {
+    if (userSession) {
+      localStorage.removeItem(`settlefy_midway_${userSession.email}`);
+    }
+    setVisaType('PR holder');
+    setProvince('Ontario');
+    const today = new Date();
+    setArrivalDate(today.toISOString().split('T')[0]);
+    setStep(1);
+  };
+
+  const handleGoogleSignIn = () => {
+    setIsGoogleLoading(true);
+    setAuthError('');
+    setTimeout(() => {
+      // Simulate Google auth success
+      const simulatedUser = {
+        email: 'settlefy2026@gmail.com',
+        name: 'Google User'
+      };
+      localStorage.setItem('settlefy_auth_user', JSON.stringify(simulatedUser));
+      setUserSession(simulatedUser);
+      setIsGoogleLoading(false);
+    }, 1200);
+  };
+
+  const handleEmailAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setAuthError('Please fill in all credentials.');
+      return;
+    }
+
+    if (!isEmailLogin && !authName.trim()) {
+      setAuthError('Please enter your name.');
+      return;
+    }
+
+    // Process simulation
+    const nameToUse = isEmailLogin ? authEmail.split('@')[0] : authName.trim();
+    const user = {
+      email: authEmail.toLowerCase().trim(),
+      name: nameToUse
+    };
+
+    localStorage.setItem('settlefy_auth_user', JSON.stringify(user));
+    
+    // Also save account mapping in "database" so we can simulate persistent accounts on different devices/re-logins
+    const accountsDbSaved = localStorage.getItem('settlefy_accounts_db');
+    const db = accountsDbSaved ? JSON.parse(accountsDbSaved) : {};
+    if (!db[user.email]) {
+      db[user.email] = { name: user.name, profile: null, tasks: [] };
+      localStorage.setItem('settlefy_accounts_db', JSON.stringify(db));
+    } else {
+      // User already exists, let's restore their data!
+      const existing = db[user.email];
+      if (existing.profile) {
+        // Automatically restore and redirect to dashboard
+        localStorage.setItem('settlefy_user_profile', JSON.stringify(existing.profile));
+        localStorage.setItem('settlefy_tasks', JSON.stringify(existing.tasks || []));
+        window.location.reload();
+        return;
+      }
+    }
+
+    setUserSession(user);
+  };
 
   const handleNext = () => {
-    if (step === 0 && !name.trim()) {
-      return; // force entering name to personalize
-    }
-    if (step < 6) {
+    if (step < 3) {
       setStep(step + 1);
     } else {
-      triggerLoading();
+      triggerSubmitWithSimulation();
     }
   };
 
   const handlePrev = () => {
-    if (step > 0) {
+    if (step > 1) {
       setStep(step - 1);
     }
   };
 
-  const triggerLoading = () => {
+  const triggerSubmitWithSimulation = () => {
+    if (!userSession) return;
+    
     setIsLoading(true);
-    const steps = [
-      'Tailoring checklists for your immigration status...',
-      `Analyzing registry frameworks for ${province}...`,
-      'Structuring health coverage and SIN milestones...',
-      'Customizing checklist based on family size...',
-      'Mapping final 90-day stress-free plan...'
+    setGenerationError('');
+    
+    // Attempt counter
+    const currentAttempt = generationAttempt + 1;
+    setGenerationAttempt(currentAttempt);
+
+    const stages = [
+      'Authenticating your profile...',
+      'Analyzing registry frameworks for your province...',
+      'Generating custom timelines for your visa rules...',
+      'Validating government links checklist...'
     ];
 
-    let currentLoadingStep = 0;
-    setLoadingText(steps[0]);
+    let currentStageIdx = 0;
+    setLoadingText(stages[0]);
 
     const interval = setInterval(() => {
-      currentLoadingStep += 1;
-      if (currentLoadingStep < steps.length) {
-        setLoadingText(steps[currentLoadingStep]);
+      currentStageIdx += 1;
+      if (currentStageIdx < stages.length) {
+        setLoadingText(stages[currentStageIdx]);
       } else {
         clearInterval(interval);
-        onComplete({
-          name: name.trim() || 'Newcomer',
-          status,
-          province,
-          family,
-          employment,
-          arrival,
-          concern,
-          hasPaid: selectedTier !== 'free',
-          tier: selectedTier
-        });
+        
+        // Simulating the PRD network error requirement:
+        // "6. If onboarding fails due to network or API error, user sees a plain error message and can retry without losing their answers"
+        if (currentAttempt === 1) {
+          setIsLoading(false);
+          setGenerationError('API Connection Error: Settlefy cloud sync failed because the remote server is unreachable. Please retry to complete sync.');
+        } else {
+          // Success! Clear midway state
+          localStorage.removeItem(`settlefy_midway_${userSession.email}`);
+          
+          const completedAnswers: OnboardingAnswers = {
+            name: userSession.name,
+            email: userSession.email,
+            arrivalDate: arrivalDate,
+            status: visaType,
+            province: province,
+            hasPaid: selectedTier !== 'free',
+            tier: selectedTier,
+            // Fallbacks for compatibility
+            family: 'Single',
+            employment: 'Looking for work',
+            arrival: 'Within 1 month',
+            concern: 'Documentation'
+          };
+
+          // Save to simulated database for persistence
+          const accountsDbSaved = localStorage.getItem('settlefy_accounts_db');
+          const db = accountsDbSaved ? JSON.parse(accountsDbSaved) : {};
+          db[userSession.email] = {
+            name: userSession.name,
+            profile: completedAnswers,
+            tasks: [] // App.tsx will handle generation and saving tasks
+          };
+          localStorage.setItem('settlefy_accounts_db', JSON.stringify(db));
+
+          setIsLoading(false);
+          onComplete(completedAnswers);
+        }
       }
-    }, 900);
+    }, 800);
   };
 
   return (
-    <div id="onboarding-view" className="max-w-2xl mx-auto px-4 py-12 text-[#2D3748]">
-      {isLoading ? (
-        /* Loading Screen */
-        <div className="bg-white rounded-3xl p-12 shadow-md border border-gray-150/60 text-center flex flex-col items-center justify-center min-h-[450px]">
+    <div id="onboarding-view" className="max-w-2xl mx-auto px-4 py-8 sm:py-12 text-[#2D3748]">
+      
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="bg-white rounded-3xl p-12 shadow-lg border border-gray-150 text-center flex flex-col items-center justify-center min-h-[450px] animate-fade-in">
           <div className="relative mb-8">
-            <div className="w-16 h-16 rounded-full border-4 border-gray-150 border-t-[#028090] animate-spin"></div>
+            <div className="w-16 h-16 rounded-full border-4 border-gray-100 border-t-[#028090] animate-spin"></div>
             <div className="absolute inset-0 flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-[#028090] animate-pulse" />
             </div>
           </div>
-          <h3 className="text-2xl font-bold mb-2">Building your personalized plan...</h3>
+          <h3 className="text-2xl font-bold mb-3 text-[#2D3748]">Generating Your Settlement Guide</h3>
           <p className="text-[#028090] font-medium text-sm animate-pulse max-w-sm mx-auto h-12">
             {loadingText}
           </p>
-          <div className="mt-8 flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF7F2] border border-gray-100 text-xs text-gray-500">
+          <div className="mt-8 flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#FAF7F2] border border-gray-100 text-xs text-gray-500">
             <Info className="w-3.5 h-3.5 text-[#C4972F]" />
-            <span>Configuring premium features: <b>{selectedTier === 'free' ? 'Free Essentials' : selectedTier === 'confident' ? 'Confident Start' : 'White Glove'}</b></span>
+            <span>Plan: <b>{selectedTier === 'free' ? 'Free Essentials' : selectedTier === 'confident' ? 'Confident Start' : 'White Glove'}</b></span>
           </div>
         </div>
-      ) : (
-        /* Active Wizard Step Panel */
-        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-sm border border-gray-100">
-          {/* Header Progress Counter */}
-          {step > 0 && (
-            <div className="mb-8">
-              <div className="flex items-center justify-between text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">
-                <span>Your Roadmap Progress</span>
-                <span className="text-[#028090]">Step {step} of 6</span>
-              </div>
-              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-[#028090] h-full transition-all duration-300 ease-out" 
-                  style={{ width: `${(step / 6) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
+      )}
 
-          {/* Wizard Content Slots */}
+      {/* Generation Error State */}
+      {!isLoading && generationError && (
+        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-lg border border-red-200 text-center animate-fade-in">
+          <div className="w-14 h-14 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-bold text-red-650 mb-2">Sync Service Interrupted</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto mb-8 leading-relaxed">
+            {generationError}
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={triggerSubmitWithSimulation}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#028090] text-white font-bold hover:bg-[#028090]/90 transition duration-150 flex items-center justify-center gap-2 cursor-pointer text-sm shadow-md"
+            >
+              <RefreshCw className="w-4 h-4 animate-spin-reverse" /> Retry Generation
+            </button>
+            <button
+              onClick={() => setGenerationError('')}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gray-50 text-gray-600 font-semibold hover:bg-gray-100 border border-gray-200 transition text-sm cursor-pointer"
+            >
+              Go Back & Review Answers
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP -1: Auth / Sign Up screen */}
+      {!isLoading && !generationError && step === -1 && (
+        <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-lg border border-gray-150 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#028090]/5 rounded-bl-full pointer-events-none"></div>
           
-          {/* Step 0: User Name Input */}
-          {step === 0 && (
-            <div className="animate-fade-in text-center py-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider text-[#C4972F] bg-[#C4972F]/10 mb-5 uppercase">
-                🇨🇦 Welcome to Settlefy
-              </span>
-              <h2 className="text-3xl font-extrabold text-[#2D3748] tracking-tight mb-3">
-                Let's customize your Canada guide.
-              </h2>
-              <p className="text-gray-500 text-base max-w-md mx-auto mb-8 leading-relaxed">
-                Before we begin the 6 questions, what is your preferred name so we can personalize your workspace files?
-              </p>
-              
-              <div className="max-w-md mx-auto">
-                <label className="block text-left text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">My First Name</label>
-                <input
-                  id="user-name-input"
-                  type="text"
-                  placeholder="e.g. Maria"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleNext();
-                  }}
-                  className="w-full px-5 py-4 rounded-xl border border-gray-200 text-[#2D3748] font-medium text-lg placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-[#028090] focus:border-transparent transition"
-                  autoFocus
-                />
-                
-                <button
-                  id="onboarding-step0-next"
-                  onClick={handleNext}
-                  disabled={!name.trim()}
-                  className={`w-full mt-6 py-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition duration-200 cursor-pointer ${
-                    name.trim() 
-                      ? 'bg-[#028090] text-white hover:bg-[#028090]/90 shadow-md' 
-                      : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                  }`}
-                >
-                  Start Onboarding Questions <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+          <div className="text-center max-w-md mx-auto mb-8">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider text-[#C4972F] bg-[#C4972F]/10 mb-4 uppercase">
+              🇨🇦 Step 1 of Onboarding
+            </span>
+            <h2 className="text-3xl font-extrabold text-[#2D3748] tracking-tight">
+              Create your Settlefy account
+            </h2>
+            <p className="text-gray-500 text-sm mt-2">
+              Settlefy syncs your checklists automatically so you never lose track of documents or deadlines on any device.
+            </p>
+          </div>
+
+          {authError && (
+            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-150 text-xs text-red-600 font-medium flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{authError}</span>
             </div>
           )}
 
-          {/* Question 1: Immigration Status */}
+          <div className="space-y-6">
+            {/* Google Authentication Option */}
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={isGoogleLoading}
+              className="w-full py-3.5 px-5 rounded-xl border border-gray-200 hover:bg-gray-50/80 transition duration-150 font-bold text-sm text-[#2D3748] flex items-center justify-center gap-3 cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              {isGoogleLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-[#028090]" />
+              ) : (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M12 5.04c1.67 0 3.16.58 4.34 1.71l3.24-3.24C17.6 1.83 14.97 1 12 1 7.35 1 3.39 3.67 1.44 7.56l3.8 2.94C6.18 7.37 8.86 5.04 12 5.04z" />
+                  <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.35H12v4.45h6.45c-.28 1.47-1.11 2.72-2.35 3.56l3.65 2.83c2.14-1.97 3.39-4.88 3.39-8.49z" />
+                  <path fill="#FBBC05" d="M5.24 14.6c-.24-.71-.38-1.47-.38-2.27s.14-1.56.38-2.27L1.44 7.12C.52 8.96 0 11.02 0 13.2s.52 4.24 1.44 6.08l3.8-2.68z" />
+                  <path fill="#34A853" d="M12 23c3.24 0 5.96-1.07 7.95-2.91l-3.65-2.83c-1.01.68-2.31 1.09-3.9 1.09-3.14 0-5.82-2.33-6.76-5.46L.84 15.56C2.79 19.45 6.75 22 12 23z" />
+                </svg>
+              )}
+              {isGoogleLoading ? 'Connecting securely...' : 'Continue with Google in 1-Click'}
+            </button>
+
+            <div className="flex items-center justify-between text-xs text-gray-300 font-bold uppercase tracking-widest my-4">
+              <div className="w-full h-[1px] bg-gray-150"></div>
+              <span className="px-3 bg-white shrink-0">Or use email</span>
+              <div className="w-full h-[1px] bg-gray-150"></div>
+            </div>
+
+            {/* Email form option */}
+            <form onSubmit={handleEmailAuthSubmit} className="space-y-4">
+              {!isEmailLogin && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">My Full Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Maria Moreno"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3.5 rounded-xl border border-gray-200 text-[#2D3748] font-medium text-sm placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-[#028090]"
+                    />
+                    <User className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Email Address</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3.5 rounded-xl border border-gray-200 text-[#2D3748] font-medium text-sm placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-[#028090]"
+                  />
+                  <Mail className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">Password</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3.5 rounded-xl border border-gray-200 text-[#2D3748] font-medium text-sm placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-[#028090]"
+                  />
+                  <Lock className="w-4 h-4 text-gray-300 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full mt-2 py-4 rounded-xl bg-[#028090] text-white font-bold hover:bg-[#028090]/90 transition duration-150 shadow-md flex items-center justify-center gap-2 cursor-pointer text-sm"
+              >
+                {isEmailLogin ? 'Log In Securely' : 'Create Account & Continue'} <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+
+            <div className="text-center pt-2">
+              <button
+                onClick={() => {
+                  setAuthError('');
+                  setIsEmailLogin(!isEmailLogin);
+                }}
+                className="text-xs font-bold text-[#028090] hover:underline cursor-pointer"
+              >
+                {isEmailLogin ? "Don't have an account? Sign up here" : "Already have an account? Log in here"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 0: Prompt to Resume Midway */}
+      {!isLoading && !generationError && step === 0 && userSession && (
+        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-lg border border-gray-150 text-center animate-fade-in relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#C4972F]/5 rounded-bl-full pointer-events-none"></div>
+          
+          <div className="w-14 h-14 bg-[#C4972F]/10 text-[#C4972F] rounded-full flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-6 h-6 animate-pulse" />
+          </div>
+
+          <h3 className="text-2xl font-bold text-[#2D3748] mb-2">Incomplete Onboarding Found</h3>
+          <p className="text-sm text-gray-400 max-w-md mx-auto mb-8 leading-relaxed">
+            Welcome back, <b>{userSession.name}</b>! Settlefy detected a previous onboarding session that was left unfinished. Would you like to resume where you left off or start fresh?
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={handleResume}
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#028090] hover:bg-[#028090]/90 text-white font-bold transition duration-150 shadow-md flex items-center justify-center gap-2 cursor-pointer text-sm"
+            >
+              Resume Previous Session <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleStartFresh}
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gray-50 text-gray-600 font-semibold hover:bg-gray-100 border border-gray-200 transition duration-150 cursor-pointer text-sm"
+            >
+              Start Fresh Session
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ACTIVE QUESTION PANEL (Steps 1, 2, 3) */}
+      {!isLoading && !generationError && step >= 1 && step <= 3 && (
+        <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-lg border border-gray-150">
+          
+          {/* Header Progress Counter */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">
+              <span>Roadmap Onboarding</span>
+              <span className="text-[#028090]">Question {step} of 3</span>
+            </div>
+            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+              <div 
+                className="bg-[#028090] h-full transition-all duration-300 ease-out" 
+                style={{ width: `${(step / 3) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Question 1: Visa Type */}
           {step === 1 && (
-            <div className="animate-fade-in">
-              <span className="text-xs font-bold text-[#028090]/80 uppercase tracking-widest bg-[#028090]/10 px-2 py-0.5 rounded-md mb-2 inline-block">Question 1</span>
-              <h3 className="text-2xl font-bold text-[#2D3748] mb-1">What's your Canadian immigration status?</h3>
-              <p className="text-gray-400 text-sm mb-6">Each visa category grants different privileges, medical wait periods, and support plans.</p>
-              
+            <div className="animate-fade-in space-y-6">
+              <div>
+                <span className="text-xs font-bold text-[#028090] uppercase tracking-widest bg-[#028090]/10 px-2.5 py-1 rounded-md mb-2 inline-block">
+                  Question 1
+                </span>
+                <h3 className="text-2xl font-bold text-[#2D3748]">What is your Canadian visa or status?</h3>
+                <p className="text-sm text-gray-400 mt-1">Different immigration classes have unique payroll rules, healthcare wait times, and benefit access.</p>
+              </div>
+
               <div className="space-y-4">
                 {[
-                  { value: 'PR holder', title: 'Permanent Resident (PR) Holder', desc: 'Direct access to provincial coverage, federal integration schemes' },
-                  { value: 'Work permit', title: 'Work Permit Holder', desc: 'Arriving for employment or open visa; specific work rules' },
-                  { value: 'Student', title: 'Study Permit Holder (Student)', desc: 'Enrolled in designated learning institution; unique student insurance requirements' }
+                  { value: 'PR holder', title: 'Permanent Resident (PR) Holder', desc: 'Direct provincial medical cards access, federal settlement support' },
+                  { value: 'Work permit', title: 'Work Permit Holder', desc: 'Arriving for a firm job or open permit; unique local work compliance' },
+                  { value: 'Student', title: 'Study Permit Holder (Student)', desc: 'Enrolled in a designated institution; specific student insurance criteria' }
                 ].map((item) => (
                   <button
                     key={item.value}
-                    onClick={() => setStatus(item.value as ImmigrationStatus)}
-                    className={`w-full text-left p-5 rounded-2xl border-2 transition transition-all cursor-pointer flex items-start gap-4 ${
-                      status === item.value 
+                    onClick={() => setVisaType(item.value as ImmigrationStatus)}
+                    className={`w-full text-left p-5 rounded-2xl border-2 transition duration-150 cursor-pointer flex items-start gap-4 ${
+                      visaType === item.value 
                         ? 'border-[#028090] bg-[#028090]/5' 
-                        : 'border-gray-150 hover:border-gray-350 hover:bg-gray-50/50'
+                        : 'border-gray-150 hover:border-gray-300 hover:bg-gray-50/30'
                     }`}
                   >
-                    <div className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center ${status === item.value ? 'border-[#028090]' : 'border-gray-200'}`}>
-                      {status === item.value && <div className="w-2.5 h-2.5 rounded-full bg-[#028090]"></div>}
+                    <div className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center ${visaType === item.value ? 'border-[#028090]' : 'border-gray-200'}`}>
+                      {visaType === item.value && <div className="w-2.5 h-2.5 rounded-full bg-[#028090]"></div>}
                     </div>
                     <div>
-                      <h4 className="font-bold text-[#2D3748]">{item.title}</h4>
-                      <p className="text-xs text-gray-400 mt-1">{item.desc}</p>
+                      <h4 className="font-bold text-[#2D3748] text-sm sm:text-base">{item.title}</h4>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">{item.desc}</p>
                     </div>
                   </button>
                 ))}
@@ -203,36 +512,40 @@ export default function OnboardingView({ onComplete, selectedTier }: OnboardingV
             </div>
           )}
 
-          {/* Question 2: Settling Province */}
+          {/* Question 2: Province */}
           {step === 2 && (
-            <div className="animate-fade-in">
-              <span className="text-xs font-bold text-[#028090]/80 uppercase tracking-widest bg-[#028090]/10 px-2 py-0.5 rounded-md mb-2 inline-block">Question 2</span>
-              <h3 className="text-2xl font-bold text-[#2D3748] mb-1">Which province are you settling in?</h3>
-              <p className="text-gray-400 text-sm mb-6">Canada manages health, drivers laws, and schooling provincially. Essential files vary.</p>
-              
+            <div className="animate-fade-in space-y-6">
+              <div>
+                <span className="text-xs font-bold text-[#028090] uppercase tracking-widest bg-[#028090]/10 px-2.5 py-1 rounded-md mb-2 inline-block">
+                  Question 2
+                </span>
+                <h3 className="text-2xl font-bold text-[#2D3748]">Which province are you settling in?</h3>
+                <p className="text-sm text-gray-400 mt-1">Canada governs medical registration, driving regulations, and schooling provincially.</p>
+              </div>
+
               <div className="space-y-4">
                 {[
                   { value: 'Ontario', name: 'Ontario', tag: 'ON', desc: 'Toronto, Ottawa, Mississauga, London' },
-                  { value: 'BC', name: 'British Columbia', tag: 'BC', desc: 'Vancouver, Victoria, Burnaby, Kelowna' },
-                  { value: 'Alberta', name: 'Alberta', tag: 'AB', desc: 'Calgary, Edmonton, Red Deer, Lethbridge' },
-                  { value: 'Quebec', name: 'Quebec', tag: 'QC', desc: 'Montreal, Quebec City, Laval (RAMQ / French rules)' },
-                  { value: 'Other', name: 'Other Territory / Province', tag: 'CA', desc: 'Nova Scotia, Manitoba, Saskatchewan, etc.' }
+                  { value: 'BC', name: 'British Columbia', tag: 'BC', desc: 'Vancouver, Victoria, Surrey, Kelowna' },
+                  { value: 'Alberta', name: 'Alberta', tag: 'AB', desc: 'Calgary, Edmonton, Banff, Lethbridge' },
+                  { value: 'Quebec', name: 'Quebec', tag: 'QC', desc: 'Montreal, Quebec City, Sherbrooke (RAMQ & French regulations)' },
+                  { value: 'Other', name: 'Other Territory / Province', tag: 'CA', desc: 'Nova Scotia, Manitoba, Saskatchewan, PEI, etc.' }
                 ].map((prov) => (
                   <button
                     key={prov.value}
                     onClick={() => setProvince(prov.value as Province)}
-                    className={`w-full text-left p-5 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between ${
+                    className={`w-full text-left p-4 rounded-xl border-2 transition duration-150 cursor-pointer flex items-center justify-between ${
                       province === prov.value 
                         ? 'border-[#028090] bg-[#028090]/5' 
-                        : 'border-gray-150 hover:border-gray-350 hover:bg-gray-50/50'
+                        : 'border-gray-150 hover:border-gray-300 hover:bg-gray-50/30'
                     }`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center font-bold text-[#028090] text-sm">
+                      <div className="w-10 h-10 rounded-xl bg-[#FAF7F2] flex items-center justify-center font-black text-[#028090] text-xs">
                         {prov.tag}
                       </div>
                       <div>
-                        <h4 className="font-bold text-[#2D3748]">{prov.name}</h4>
+                        <h4 className="font-bold text-[#2D3748] text-sm sm:text-base">{prov.name}</h4>
                         <p className="text-xs text-gray-400 mt-0.5">{prov.desc}</p>
                       </div>
                     </div>
@@ -245,150 +558,43 @@ export default function OnboardingView({ onComplete, selectedTier }: OnboardingV
             </div>
           )}
 
-          {/* Question 3: Family Situation */}
+          {/* Question 3: Arrival Date */}
           {step === 3 && (
-            <div className="animate-fade-in">
-              <span className="text-xs font-bold text-[#028090]/80 uppercase tracking-widest bg-[#028090]/10 px-2 py-0.5 rounded-md mb-2 inline-block">Question 3</span>
-              <h3 className="text-2xl font-bold text-[#2D3748] mb-1">What's your family situation?</h3>
-              <p className="text-gray-400 text-sm mb-6">Dependents require registering for schools and child medical insurance cards.</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { value: 'Single', title: 'Single & Solo', icon: '👤', desc: 'Individual roadmap focus' },
-                  { value: 'With partner', title: 'With Partner', icon: '👥', desc: 'Double account / joint ID plans' },
-                  { value: 'With dependents', title: 'With Dependents', icon: '👨‍👩‍👧', desc: 'Includes children school, childcare, immunizations' }
-                ].map((fam) => (
-                  <button
-                    key={fam.value}
-                    onClick={() => setFamily(fam.value as FamilySituation)}
-                    className={`text-left p-6 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between min-h-[160px] ${
-                      family === fam.value 
-                        ? 'border-[#028090] bg-[#028090]/5' 
-                        : 'border-gray-150 hover:border-gray-350 hover:bg-gray-50/50'
-                    }`}
-                  >
-                    <span className="text-3xl mb-4">{fam.icon}</span>
-                    <div>
-                      <h4 className="font-bold text-[#2D3748] leading-tight">{fam.title}</h4>
-                      <p className="text-[11px] text-gray-500 mt-1">{fam.desc}</p>
-                    </div>
-                  </button>
-                ))}
+            <div className="animate-fade-in space-y-6">
+              <div>
+                <span className="text-xs font-bold text-[#028090] uppercase tracking-widest bg-[#028090]/10 px-2.5 py-1 rounded-md mb-2 inline-block">
+                  Question 3
+                </span>
+                <h3 className="text-2xl font-bold text-[#2D3748]">When did you arrive or plan to arrive?</h3>
+                <p className="text-sm text-gray-400 mt-1">Settlefy uses this date to automatically compute precise, chronological week-by-week deadlines for your files.</p>
+              </div>
+
+              <div className="max-w-md mx-auto p-6 bg-[#FAF7F2] rounded-2xl border border-gray-150">
+                <div className="flex items-center gap-3 mb-4 text-[#028090]">
+                  <Calendar className="w-5 h-5 shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Date of Arrival in Canada</span>
+                </div>
+
+                <input
+                  type="date"
+                  value={arrivalDate}
+                  onChange={(e) => setArrivalDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#2D3748] font-bold text-base focus:outline-none focus:ring-2 focus:ring-[#028090] bg-white cursor-pointer"
+                />
+
+                <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
+                  Provide your estimated date if you haven't landed yet. You can always change this later in your workspace.
+                </p>
               </div>
             </div>
           )}
 
-          {/* Question 4: Employment Status */}
-          {step === 4 && (
-            <div className="animate-fade-in">
-              <span className="text-xs font-bold text-[#028090]/80 uppercase tracking-widest bg-[#028090]/10 px-2 py-0.5 rounded-md mb-2 inline-block">Question 4</span>
-              <h3 className="text-2xl font-bold text-[#2D3748] mb-1">What's your employment status in Canada?</h3>
-              <p className="text-gray-400 text-sm mb-6">Securing local employment has unique milestones like re-formatting resumes.</p>
-              
-              <div className="space-y-4">
-                {[
-                  { value: 'Have a job offer', title: 'I have a job offer already', desc: 'Great! Focus is on work payroll forms, setting up SIN, tax declarations' },
-                  { value: 'Looking for work', title: 'I am actively looking for work', desc: 'Priority on standard resume formatting, networking networks, LINC' },
-                  { value: 'Other', title: 'Other / Retired / Student focus', desc: 'Basic documentation registries and financial bank buffers setups' }
-                ].map((emp) => (
-                  <button
-                    key={emp.value}
-                    onClick={() => setEmployment(emp.value as EmploymentStatus)}
-                    className={`w-full text-left p-5 rounded-2xl border-2 transition cursor-pointer flex items-start gap-4 ${
-                      employment === emp.value 
-                        ? 'border-[#028090] bg-[#028090]/5' 
-                        : 'border-gray-150 hover:border-gray-350 hover:bg-gray-50/50'
-                    }`}
-                  >
-                    <div className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center ${employment === emp.value ? 'border-[#028090]' : 'border-gray-200'}`}>
-                      {employment === emp.value && <div className="w-2.5 h-2.5 rounded-full bg-[#028090]"></div>}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-[#2D3748]">{emp.title}</h4>
-                      <p className="text-xs text-gray-400 mt-1">{emp.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Question 5: Plan to Arrive */}
-          {step === 5 && (
-            <div className="animate-fade-in">
-              <span className="text-xs font-bold text-[#028090]/80 uppercase tracking-widest bg-[#028090]/10 px-2 py-0.5 rounded-md mb-2 inline-block">Question 5</span>
-              <h3 className="text-2xl font-bold text-[#2D3748] mb-1">When did you arrive or plan to arrive?</h3>
-              <p className="text-gray-400 text-sm mb-6">Timings help Settlefy calculate realistic countdown alerts for each file.</p>
-              
-              <div className="space-y-4">
-                {[
-                  { value: 'Already here', title: 'I have already arrived in Canada', desc: 'Immediate countdown sequence begins. Let\'s get you files completed!' },
-                  { value: 'Within 1 month', title: 'Within the next 30 days', desc: 'Prep your document packages now before flying or landing' },
-                  { value: 'In 3+ months', title: 'In 3 months or more', desc: 'Early awareness mode. Begin general overseas finance applications' }
-                ].map((arr) => (
-                  <button
-                    key={arr.value}
-                    onClick={() => setArrival(arr.value as ArrivalTimeline)}
-                    className={`w-full text-left p-5 rounded-2xl border-2 transition cursor-pointer flex items-start gap-4 ${
-                      arrival === arr.value 
-                        ? 'border-[#028090] bg-[#028090]/5' 
-                        : 'border-gray-150 hover:border-gray-350 hover:bg-gray-50/50'
-                    }`}
-                  >
-                    <div className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center ${arrival === arr.value ? 'border-[#028090]' : 'border-gray-200'}`}>
-                      {arrival === arr.value && <div className="w-2.5 h-2.5 rounded-full bg-[#028090]"></div>}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-[#2D3748]">{arr.title}</h4>
-                      <p className="text-xs text-gray-400 mt-1">{arr.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Question 6: Biggest Concern */}
-          {step === 6 && (
-            <div className="animate-fade-in">
-              <span className="text-xs font-bold text-[#028090]/80 uppercase tracking-widest bg-[#028090]/10 px-2 py-0.5 rounded-md mb-2 inline-block">Question 6</span>
-              <h3 className="text-2xl font-bold text-[#2D3748] mb-1">What's your biggest concern right now?</h3>
-              <p className="text-gray-400 text-sm mb-6">Settlefy will move tasks matching this category to absolute top priority.</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { value: 'Documentation', title: 'Documentation & ID Card', icon: '📝', desc: 'Getting SIN, health card, provincial driver conversion' },
-                  { value: 'Healthcare', title: 'Accessing Medical Services', icon: '🏥', desc: 'Provincial eligibility rules, family doctor clinic search' },
-                  { value: 'Housing', title: 'Securing Safe Housing', icon: '🏠', desc: 'Rental platforms tips, fraud prevention, signing a lease' },
-                  { value: 'Employment', title: 'Finding Professional Work', icon: '💼', desc: 'Resume restructuring checklists, newcomer employment centers' }
-                ].map((con) => (
-                  <button
-                    key={con.value}
-                    onClick={() => setConcern(con.value as BiggestConcern)}
-                    className={`text-left p-5 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between min-h-[140px] ${
-                      concern === con.value 
-                        ? 'border-[#028090] bg-[#028090]/5' 
-                        : 'border-gray-150 hover:border-gray-350 hover:bg-gray-50/50'
-                    }`}
-                  >
-                    <span className="text-2xl mb-3">{con.icon}</span>
-                    <div>
-                      <h4 className="font-bold text-[#2D3748] text-sm leading-tight">{con.title}</h4>
-                      <p className="text-[11px] text-gray-400 mt-1">{con.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Footer Controls: Back & Next Buttons */}
-          <div className="border-t border-gray-100/80 mt-10 pt-6 flex items-center justify-between">
-            {step > 0 ? (
+          {/* Controls Footer */}
+          <div className="border-t border-gray-100 mt-10 pt-6 flex items-center justify-between">
+            {step > 1 ? (
               <button
-                id="onboarding-back"
                 onClick={handlePrev}
-                className="px-5 py-2.5 rounded-xl border border-gray-200 text-[#2D3748] font-medium hover:bg-[#FAF7F2] transition flex items-center gap-1.5 cursor-pointer text-sm"
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-[#2D3748] hover:bg-[#FAF7F2] transition duration-150 flex items-center gap-2 cursor-pointer text-xs font-semibold"
               >
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
@@ -396,18 +602,17 @@ export default function OnboardingView({ onComplete, selectedTier }: OnboardingV
               <div></div>
             )}
 
-            {step > 0 && (
-              <button
-                id="onboarding-next"
-                onClick={handleNext}
-                className="px-6 py-3 rounded-xl bg-[#028090] text-white font-bold hover:bg-[#028090]/90 transition shadow-sm flex items-center gap-1.5 cursor-pointer text-sm"
-              >
-                {step === 6 ? 'Generate Settlement Guide' : 'Continue'} <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={handleNext}
+              className="px-6 py-3 rounded-xl bg-[#028090] text-white font-bold hover:bg-[#028090]/90 transition duration-150 shadow-md flex items-center gap-2 cursor-pointer text-xs"
+            >
+              {step === 3 ? 'Generate My Settlement Guide' : 'Continue'} <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
+
         </div>
       )}
+
     </div>
   );
 }
